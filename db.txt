@@ -1442,8 +1442,7 @@ the ability to collect,
 process and analyse
 data. It creates wealth
 at a very rapid pace but
-unfortunately it is
-concentrated in very few countries or companies or
+unfortunately it is concentrated in very few countries or companies or
 individuals. If you look at the internet traffic 25 years
 back, it was 1 Mbps but today it is 150 Tbps. The growth
 is 15 crore fold. The world has created a completely
