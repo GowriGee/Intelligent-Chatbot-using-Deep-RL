@@ -1,3 +1,4 @@
+from flask import Flask, render_template, request
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -8,8 +9,14 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
-X=dataframe['Q'].values
-Y=dataframe['A'].values
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+X=dataframe['Q'].values.astype("str")
+Y=dataframe['A'].values.astype("str")
 tokenizer = Tokenizer()
 tokenizer.fit_on_texts( X ) 
 tokenized_X = tokenizer.texts_to_sequences( X )
@@ -98,18 +105,14 @@ def str_to_tokens( sentence : str ):
     return pad_sequences( [tokens_list] , maxlen=max_input_length , padding='post')
 enc_model , dec_model = make_inference_models()
 
-from tensorflow.keras.utils import plot_model
-print("Seq2Seq Model")
-plot_model(model, show_shapes=True,show_layer_names=True)
-print("Encoder model")
-plot_model(enc_model, show_shapes=True,show_layer_names=True)
-print("Decoder model")
-plot_model(dec_model, show_shapes=True,show_layer_names=True)
 print("Hi, my name is Marcus. I am MBCET's chatbot. I am quite young and I am still learning. I assure you that I will be better over time:)")
-while(1):
-    inp_quest=input( 'Enter question : ' )
+#while(1):
+@app.route("/get")
+def get_bot_response():
+    
+    inp_quest=userText = request.args.get('msg')#input( 'Enter question : ' )
     if(inp_quest.lower()=='bye'):
-      break
+      return ("Thank you for talking. Goodbye!")
     inp_quest=re.sub(r"[?,/.!@%$#]", " ", inp_quest)
     try:
       states_values = enc_model.predict( str_to_tokens( inp_quest.lower()) )
@@ -134,9 +137,12 @@ while(1):
           empty_target_seq = np.zeros( ( 1 , 1 ) )  
           empty_target_seq[ 0 , 0 ] = sampled_word_index
           states_values = [ h , c ] 
-
-      print( decoded_answer )
+      return decoded_answer
+      #print( decoded_answer )
     except:
-      print("Sorry, didn't get your question")
+      return ("Sorry, didn't get your question")
       
-print("Thank you for talking. Goodbye!")
+#print("Thank you for talking. Goodbye!")
+
+if __name__ == "__main__":
+    app.run()
