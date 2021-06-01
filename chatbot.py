@@ -2,8 +2,9 @@ from flask import Flask, render_template, request
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import spacy
 import matplotlib.pyplot as plt
-dataframe=pd.read_csv('data.csv')
+dataframe=pd.read_csv('data1.csv')
 dataframe.head(3)
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -12,7 +13,11 @@ from sklearn.model_selection import train_test_split
 import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
+
 app = Flask(__name__)
+nlp = spacy.load('en_core_web_md')
+
+
 
 def get_wordnet_pos(word):
     """Map POS tag to first character lemmatize() accepts"""
@@ -46,7 +51,7 @@ for question in Q:
 #print (X)
 Y=dataframe['A'].values.astype("str")
 tokenizer = Tokenizer()
-print
+
 tokenizer.fit_on_texts( X ) 
 tokenized_X = tokenizer.texts_to_sequences( X )
 length_list = list()
@@ -127,16 +132,35 @@ def make_inference_models():
     decoder_outputs = decoder_dense(decoder_outputs)
     decoder_model = Model([decoder_inputs] + decoder_states_inputs,[decoder_outputs] + decoder_states)
     return encoder_model , decoder_model
+
 def str_to_tokens( sentence : str ):
     words = sentence.split()
     tokens_list = list()
-    tokens_list1 = list()
+    tokens_list1 = dict()
     for word in words:
         lemmatizer = WordNetLemmatizer()
         lemma = lemmatizer.lemmatize(word, get_wordnet_pos(word))
-        tokens_list.append( X_dict[lemma ] ) 
+        if lemma in X_dict:
+            tokens_list.append( X_dict[lemma ] )
+        else:
+            print (lemma)
+            continue
+    print (tokens_list)
+    if len(tokens_list) == 0:
+        for word in words:
+            for item in X_dict:
+                    lemmatizer = WordNetLemmatizer()
+                    lemma = lemmatizer.lemmatize(word, get_wordnet_pos(word))
+                    inputstr=lemma +  " " + item
+                    tokens = nlp(inputstr)
+                    token1, token2 = tokens[0], tokens[1]
+                    tokens_list1[item]=(token1.similarity(token2))
+            marklist = sorted(tokens_list1.items(), key=lambda x:x[1],reverse=True)
+            sortdict = dict(marklist)
+            res = next(iter(sortdict))
+            tokens_list.append(X_dict[res])
         #tokens_list1.append( X_dict[lemma ] ) 
-    #print (tokens_list1)
+    print (tokens_list)
     return pad_sequences( [tokens_list] , maxlen=max_input_length , padding='post')
 enc_model , dec_model = make_inference_models()
 
@@ -149,9 +173,9 @@ def get_bot_response():
     if(inp_quest.lower()=='bye'):
       return ("Thank you for talking. Goodbye!")
     inp_quest=re.sub(r"[?,/.!@%$#]", " ", inp_quest)
+    states_values = enc_model.predict( str_to_tokens( inp_quest.lower()) )
     try:
-      states_values = enc_model.predict( str_to_tokens( inp_quest.lower()) )
-      print (states_values)
+      #states_values = enc_model.predict( str_to_tokens( inp_quest.lower()) )
       empty_target_seq = np.zeros( ( 1 , 1 ) )
       empty_target_seq[0, 0] = Y_dict['start']
       stop_condition = False
@@ -175,10 +199,13 @@ def get_bot_response():
           states_values = [ h , c ] 
       return decoded_answer
       #print( decoded_answer )
-    except:
-      return ("Sorry, didn't get your question")
+    except Exception as ex:
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+        message = template.format(type(ex).__name__, ex.args)
+        print (message)
+        return ("I'm sorry, I dont understand. Please contact ")
       
-#print("Thank you for talking. Goodbye!")
+print("Thank you for talking. Goodbye!")
 
 if __name__ == "__main__":
     app.run()
