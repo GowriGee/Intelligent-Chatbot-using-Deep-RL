@@ -9,15 +9,44 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
+import nltk
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import wordnet
 app = Flask(__name__)
+
+def get_wordnet_pos(word):
+    """Map POS tag to first character lemmatize() accepts"""
+    tag = nltk.pos_tag([word])[0][1][0].upper()
+    tag_dict = {"J": wordnet.ADJ,
+                "N": wordnet.NOUN,
+                "V": wordnet.VERB,
+                "R": wordnet.ADV}
+
+    return tag_dict.get(tag, wordnet.NOUN)
+
+
+def lemmatize_verbs(words):
+    lemmatizer = WordNetLemmatizer()
+    lemmas = ""
+    
+    for word in words:
+        lemma = lemmatizer.lemmatize(word, get_wordnet_pos(word))
+        lemmas+=lemma + " "
+    return lemmas
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index1.html")
 
-X=dataframe['Q'].values.astype("str")
+Q=dataframe['Q'].values.astype("str")
+X=[]
+for question in Q:
+    words= nltk.word_tokenize(question)
+    X.append(lemmatize_verbs(words))
+#print (X)
 Y=dataframe['A'].values.astype("str")
 tokenizer = Tokenizer()
+print
 tokenizer.fit_on_texts( X ) 
 tokenized_X = tokenizer.texts_to_sequences( X )
 length_list = list()
@@ -32,6 +61,7 @@ encoder_input_data = np.array( padded_X )
 print( 'Encoder input data shape : ',encoder_input_data.shape )
 
 X_dict = tokenizer.word_index
+print (X_dict)
 num_X_tokens = len( X_dict )+1
 print( 'Number of Input tokens : ', num_X_tokens)
 new_Y=[]
@@ -100,8 +130,13 @@ def make_inference_models():
 def str_to_tokens( sentence : str ):
     words = sentence.split()
     tokens_list = list()
+    tokens_list1 = list()
     for word in words:
-        tokens_list.append( X_dict[ word ] ) 
+        lemmatizer = WordNetLemmatizer()
+        lemma = lemmatizer.lemmatize(word, get_wordnet_pos(word))
+        tokens_list.append( X_dict[lemma ] ) 
+        #tokens_list1.append( X_dict[lemma ] ) 
+    #print (tokens_list1)
     return pad_sequences( [tokens_list] , maxlen=max_input_length , padding='post')
 enc_model , dec_model = make_inference_models()
 
@@ -110,12 +145,13 @@ print("Hi, my name is Marcus. I am MBCET's chatbot. I am quite young and I am st
 @app.route("/get")
 def get_bot_response():
     
-    inp_quest=userText = request.args.get('msg')#input( 'Enter question : ' )
+    inp_quest=userText = request.args.get('msg')
     if(inp_quest.lower()=='bye'):
       return ("Thank you for talking. Goodbye!")
     inp_quest=re.sub(r"[?,/.!@%$#]", " ", inp_quest)
     try:
       states_values = enc_model.predict( str_to_tokens( inp_quest.lower()) )
+      print (states_values)
       empty_target_seq = np.zeros( ( 1 , 1 ) )
       empty_target_seq[0, 0] = Y_dict['start']
       stop_condition = False
