@@ -12,10 +12,12 @@ from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 import nltk
 from nltk.stem import WordNetLemmatizer
-from nltk.corpus import wordnet
+from nltk.corpus import wordnet,stopwords
 
 app = Flask(__name__)
 nlp = spacy.load('en_core_web_md')
+new_stopwords=["tell","information","know"]
+stopwords.words('english').append(new_stopwords)
 
 
 
@@ -133,23 +135,30 @@ def make_inference_models():
     decoder_model = Model([decoder_inputs] + decoder_states_inputs,[decoder_outputs] + decoder_states)
     return encoder_model , decoder_model
 
+def remove_stopwords(words):
+    new_words = []
+    for word in words:
+        if word not in stopwords.words('english'):
+            new_words.append(word)
+    return new_words
+
 def str_to_tokens( sentence : str ):
+    lemmatizer = WordNetLemmatizer()
     words = sentence.split()
     tokens_list = list()
     tokens_list1 = dict()
     for word in words:
-        lemmatizer = WordNetLemmatizer()
         lemma = lemmatizer.lemmatize(word, get_wordnet_pos(word))
         if lemma in X_dict:
             tokens_list.append( X_dict[lemma ] )
         else:
-            print (lemma)
+            #print (lemma)
             continue
     print (tokens_list)
     if len(tokens_list) == 0:
+        words=remove_stopwords(words)
         for word in words:
             for item in X_dict:
-                    lemmatizer = WordNetLemmatizer()
                     lemma = lemmatizer.lemmatize(word, get_wordnet_pos(word))
                     inputstr=lemma +  " " + item
                     tokens = nlp(inputstr)
@@ -159,6 +168,7 @@ def str_to_tokens( sentence : str ):
             sortdict = dict(marklist)
             res = next(iter(sortdict))
             tokens_list.append(X_dict[res])
+            print (res)
         #tokens_list1.append( X_dict[lemma ] ) 
     print (tokens_list)
     return pad_sequences( [tokens_list] , maxlen=max_input_length , padding='post')
@@ -200,12 +210,10 @@ def get_bot_response():
       return decoded_answer
       #print( decoded_answer )
     except Exception as ex:
-        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-        message = template.format(type(ex).__name__, ex.args)
-        print (message)
         return ("I'm sorry, I dont understand. Please contact ")
       
 print("Thank you for talking. Goodbye!")
 
 if __name__ == "__main__":
     app.run()
+
