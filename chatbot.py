@@ -16,7 +16,7 @@ from nltk.corpus import wordnet,stopwords
 
 app = Flask(__name__)
 nlp = spacy.load('en_core_web_md')
-new_stopwords=["tell","information","know"]
+new_stopwords=["tell","information","know","about","more"]
 stopwords.words('english').append(new_stopwords)
 
 
@@ -43,7 +43,7 @@ def lemmatize_verbs(words):
 
 @app.route("/")
 def index():
-    return render_template("index1.html")
+    return render_template("index.html")
 
 Q=dataframe['Q'].values.astype("str")
 X=[]
@@ -147,6 +147,7 @@ def str_to_tokens( sentence : str ):
     words = sentence.split()
     tokens_list = list()
     tokens_list1 = dict()
+    words=remove_stopwords(words)
     for word in words:
         lemma = lemmatizer.lemmatize(word, get_wordnet_pos(word))
         if lemma in X_dict:
@@ -156,7 +157,7 @@ def str_to_tokens( sentence : str ):
             continue
     print (tokens_list)
     if len(tokens_list) == 0:
-        words=remove_stopwords(words)
+        #words=remove_stopwords(words)
         for word in words:
             for item in X_dict:
                     lemma = lemmatizer.lemmatize(word, get_wordnet_pos(word))
@@ -216,4 +217,4 @@ print("Thank you for talking. Goodbye!")
 
 if __name__ == "__main__":
     app.run()
-
+ 
